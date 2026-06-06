@@ -218,4 +218,4 @@ Possible improvements for this lab include:
 
 ## Security and Ethics Notice
 
-This lab was created for educational use in a private local Active Directory environment. Do not test administrative policies on systems you do not own or manage. Avoid using real passwords, real production credentials, or sensitive personal information in lab environments.
+This lab was created for educational use in a private local Active Directory environment. Do not test administrative policies on systems you do not own or manage. Avoid using real passwords, real production credentials, or sensitive personal information in lab environments. 
