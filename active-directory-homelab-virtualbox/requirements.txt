@@ -1,0 +1,2 @@
+# No Python packages are required for this Active Directory lab.
+# See REQUIREMENTS.md for hardware, software, and network requirements.
