@@ -2,28 +2,27 @@
 
 ## Overview
 
-This lab documents how to create and apply a Group Policy Object in a local Active Directory environment. The goal was to apply a user-based Group Policy that blocks access to Control Panel and PC Settings for a domain user.
+This lab documents how to create, link, apply, and verify a Group Policy Object in a local Active Directory environment.
+
+The goal of this lab was to use Group Policy to block access to Control Panel and PC Settings for a domain user on a domain-joined Windows client.
 
 This lab builds on the previous Active Directory labs:
 
 - `01-domain-controller-setup`
 - `02-client-domain-join`
 
-In this lab, the Domain Controller `DC01` manages policy settings for the `lab.local` domain, and the domain-joined client `CLIENT01` is used to verify that the policy applies correctly.
+In this lab, the Domain Controller `DC01` manages policy for the `lab.local` domain, and the domain-joined client `CLIENT01` is used to verify that the policy applies successfully.
 
 ## Lab Objective
 
-The objective of this lab was to prove that Group Policy can be created, linked, applied, and verified in an Active Directory domain.
+The objective of this lab was to prove that a Group Policy Object can be:
 
-This lab demonstrates:
-
-- Opening Group Policy Management on the Domain Controller
-- Creating a new Group Policy Object
-- Linking the GPO to the correct Organizational Unit
-- Configuring a user-based Administrative Template policy
-- Updating Group Policy on a domain-joined client
-- Verifying applied policy with `gpresult /r`
-- Testing the policy by attempting to open Control Panel
+- Created in Group Policy Management
+- Linked to an Organizational Unit
+- Configured through Group Policy Management Editor
+- Pulled by a domain-joined client using `gpupdate /force`
+- Verified with `gpresult /r`
+- Tested by attempting to open Control Panel
 
 ## Lab Environment
 
@@ -34,9 +33,10 @@ This lab demonstrates:
 | Domain | lab.local |
 | Client Machine | CLIENT01 |
 | Test User | LAB\jdoe |
+| Target Computer OU | Workstations |
 | Policy Type | User Configuration |
-| GPO Purpose | Block Control Panel and PC Settings |
-| GPO Name | Disable Control Panel - Users |
+| Policy Purpose | Block Control Panel and PC Settings |
+| GPO Name | Disable Control Panel |
 
 ## Requirements
 
@@ -50,23 +50,49 @@ See [`REQUIREMENTS.md`](REQUIREMENTS.md) for the full requirements.
 ├── REQUIREMENTS.md
 ├── requirements.txt
 └── screenshots/
-    ├── 01-users-ou-selected.png
-    ├── 02-gpo-created-and-linked.png
+    ├── 01-client01-in-workstations-ou.png
+    ├── 02-gpo-linked-to-workstations-ou.png
     ├── 03-control-panel-policy-enabled.png
     ├── 04-gpupdate-force-success.png
     ├── 05-gpresult-applied-gpo.png
     └── 06-control-panel-blocked.png
 ```
 
-## Important Note About User-Based GPOs
+## Important Note
 
-This lab uses a **User Configuration** policy.
+This lab uses a Control Panel restriction under **User Configuration**.
 
-That means the GPO needs to apply to the **user account**, not just the computer account. For this reason, the GPO should be linked to the Organizational Unit containing the test domain user `jdoe`.
+The screenshots show the policy being applied successfully to the domain user `LAB\jdoe`. The final verification is done with `gpresult /r`, which confirms the GPO appears under **Applied Group Policy Objects** for the user.
 
-If the GPO is linked only to a computer OU, the user policy may not apply unless loopback processing is configured. To keep this beginner lab clean and easy to verify, the policy should be linked to the user OU.
+If this policy does not apply in another environment, the usual causes are:
 
-## Step 1: Open Group Policy Management
+- The GPO is linked to the wrong OU
+- The user is not in the OU targeted by the policy
+- Security filtering is blocking the user
+- Group Policy has not refreshed yet
+- The setting was not actually enabled in the GPO
+
+## Step 1: Confirm CLIENT01 Is in the Workstations OU
+
+On `DC01`, open:
+
+```text
+Server Manager → Tools → Active Directory Users and Computers
+```
+
+Then expand:
+
+```text
+lab.local → Workstations
+```
+
+The domain-joined client `CLIENT01` should appear inside the `Workstations` OU.
+
+![CLIENT01 in Workstations OU](screenshots/01-client01-in-workstations-ou.png)
+
+This confirms that the client computer is organized into a dedicated workstation OU instead of being left in the default `Computers` container.
+
+## Step 2: Confirm the GPO Is Linked
 
 On `DC01`, open:
 
@@ -80,33 +106,18 @@ Then expand:
 Forest: lab.local
 → Domains
 → lab.local
+→ Workstations
 ```
 
-Select the OU that contains the test user account.
+The GPO should be linked under the `Workstations` OU.
 
-![Users OU selected](screenshots/01-users-ou-selected.png)
+![GPO linked to Workstations OU](screenshots/02-gpo-linked-to-workstations-ou.png)
 
-## Step 2: Create and Link a New GPO
+This confirms the GPO is linked and enabled.
 
-Right-click the user OU and select:
+## Step 3: Enable the Control Panel Restriction
 
-```text
-Create a GPO in this domain, and Link it here
-```
-
-Name the GPO:
-
-```text
-Disable Control Panel - Users
-```
-
-The GPO should appear linked under the selected OU.
-
-![GPO created and linked](screenshots/02-gpo-created-and-linked.png)
-
-## Step 3: Edit the GPO
-
-Right-click the new GPO and select:
+Right-click the GPO and select:
 
 ```text
 Edit
@@ -121,37 +132,35 @@ User Configuration
 → Control Panel
 ```
 
-Open the policy:
+Enable this policy:
 
 ```text
 Prohibit access to Control Panel and PC settings
 ```
 
-Set it to:
-
-```text
-Enabled
-```
-
 ![Control Panel policy enabled](screenshots/03-control-panel-policy-enabled.png)
+
+This setting prevents users from opening Control Panel and PC Settings.
 
 ## Step 4: Force Group Policy Update on CLIENT01
 
-Log in to `CLIENT01` as the domain user:
+On `CLIENT01`, log in as the domain user:
 
 ```text
 LAB\jdoe
 ```
 
-Open PowerShell or Command Prompt and run:
+Open PowerShell and run:
 
 ```powershell
 gpupdate /force
 ```
 
-A successful result should show that both Computer Policy and User Policy updated successfully.
+The update should complete successfully for both computer policy and user policy.
 
 ![gpupdate force success](screenshots/04-gpupdate-force-success.png)
+
+This confirms that `CLIENT01` contacted the domain and refreshed Group Policy.
 
 ## Step 5: Verify the GPO Applied
 
@@ -161,46 +170,50 @@ Still on `CLIENT01`, run:
 gpresult /r
 ```
 
-Under **User Settings**, check **Applied Group Policy Objects**.
-
-The GPO should appear as:
+Under **User Settings**, look for:
 
 ```text
-Disable Control Panel - Users
+Applied Group Policy Objects
 ```
+
+The applied GPO should appear in the output.
 
 ![gpresult applied GPO](screenshots/05-gpresult-applied-gpo.png)
 
-This is the strongest verification step because it proves the domain user received the policy from Active Directory.
+This is the strongest proof screenshot because it confirms the policy was actually applied to the domain user.
 
 ## Step 6: Test Control Panel Access
 
-On `CLIENT01`, while logged in as the domain user, try to open Control Panel or PC Settings.
+On `CLIENT01`, attempt to open Control Panel.
 
-The system should block access because of the applied Group Policy.
+Windows should display a restriction message stating that the operation was cancelled due to restrictions in effect on the computer.
 
 ![Control Panel blocked](screenshots/06-control-panel-blocked.png)
 
+This confirms the policy had the intended effect.
+
 ## What I Learned
 
-Through this lab, I learned how Group Policy is used to centrally manage user settings in an Active Directory domain. I also learned that GPO placement matters. A user-based policy must apply to the user account, and a computer-based policy must apply to the computer account.
+Through this lab, I learned how Group Policy can be used to centrally enforce settings in an Active Directory domain. I also learned that creating a GPO is not enough by itself. The policy must be linked correctly, refreshed on the client, and verified with tools like `gpupdate /force` and `gpresult /r`.
 
-This lab also reinforced the importance of verification. Creating a GPO is not enough. The correct way to prove that the policy applied is to use tools like:
+This lab also reinforced that screenshots should prove the important parts of the workflow:
 
-```powershell
-gpupdate /force
-gpresult /r
-```
+1. The target object exists in Active Directory
+2. The GPO is linked
+3. The setting is enabled
+4. The client updates policy successfully
+5. The GPO appears in `gpresult`
+6. The policy works when tested
 
 ## Troubleshooting Notes
 
 | Problem | Likely Cause | Fix |
 |---|---|---|
-| GPO does not appear in `gpresult /r` | GPO linked to wrong OU | Link it to the OU containing the user |
-| `Applied Group Policy Objects` shows `N/A` | Policy did not apply | Check OU placement and security filtering |
-| Control Panel still opens | User policy not applied yet | Run `gpupdate /force`, log out, and log back in |
-| DNS/domain communication issues | CLIENT01 not using DC01 for DNS | Set CLIENT01 DNS to DC01 IP |
-| Policy shows as empty | Policy setting was not enabled | Reopen GPO and confirm the setting is Enabled |
+| GPO does not show in `gpresult /r` | GPO linked to wrong OU | Confirm the user/computer target is in the correct OU |
+| `Applied Group Policy Objects` shows `N/A` | Policy did not apply | Check OU link, security filtering, and DNS |
+| Control Panel still opens | Policy has not refreshed | Run `gpupdate /force`, sign out, and sign back in |
+| Policy appears empty | Setting was not enabled | Reopen the GPO and confirm the policy is Enabled |
+| Client cannot receive policy | DNS or domain connectivity issue | Confirm CLIENT01 uses DC01 as DNS |
 
 ## Future Improvements
 
@@ -208,14 +221,12 @@ Possible improvements for this lab include:
 
 - Create a dedicated `Lab Users` OU
 - Create a dedicated `Workstations` OU
-- Move `CLIENT01` into the Workstations OU
-- Configure computer-based GPO settings
-- Enable loopback processing for workstation-targeted user policies
-- Create a password/account lockout policy lab
+- Test loopback processing for workstation-targeted user policies
 - Create a mapped network drive GPO
 - Create a desktop wallpaper GPO
-- Verify policies with `gpresult /h report.html`
+- Create an account lockout policy lab
+- Generate an HTML policy report with `gpresult /h report.html`
 
 ## Security and Ethics Notice
 
-This lab was created for educational use in a private local Active Directory environment. Do not test administrative policies on systems you do not own or manage. Avoid using real passwords, real production credentials, or sensitive personal information in lab environments.
+This lab was created for educational use in a private local Active Directory environment. Do not test administrative policies on systems you do not own or manage. Avoid using real passwords, production credentials, or sensitive personal information in lab environments.
