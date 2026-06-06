@@ -1,0 +1,2 @@
+# No Python packages are required for this Active Directory Group Policy lab.
+# See REQUIREMENTS.md for Windows, VirtualBox, Active Directory, and network requirements.
