@@ -88,7 +88,7 @@ lab.local → Workstations
 
 The domain-joined client `CLIENT01` should appear inside the `Workstations` OU.
 
-![CLIENT01 in Workstations OU](screenshots/01-client01-in-workstations-ou.png)
+![CLIENT01 in Workstations OU](screenshots/01-users-ou-selected.png)
 
 This confirms that the client computer is organized into a dedicated workstation OU instead of being left in the default `Computers` container.
 
@@ -111,7 +111,7 @@ Forest: lab.local
 
 The GPO should be linked under the `Workstations` OU.
 
-![GPO linked to Workstations OU](screenshots/02-gpo-linked-to-workstations-ou.png)
+![GPO linked to Workstations OU](screenshots/02-gpo-created-and-linked.png)
 
 This confirms the GPO is linked and enabled.
 
